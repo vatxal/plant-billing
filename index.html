@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plant Bill</title>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  background: #f5f5f5;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  font-size: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #444;
+  padding: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #eaeaea;
+}
+
+/* 🔧 COLUMN WIDTHS – MOBILE FRIENDLY */
+th:nth-child(1),
+td:nth-child(1) {
+  width: 42%;        /* Plant name */
+  text-align: left;
+  word-break: break-word;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 13%;        /* Qty (fits 5555) */
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+  width: 15%;        /* Price (fits 5555) */
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+  width: 15%;        /* Height */
+}
+
+th:nth-child(5),
+td:nth-child(5) {
+  width: 15%;        /* Total */
+}
+
+button {
+  padding: 10px;
+  font-size: 16px;
+  margin: 5px 0;
+  width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<h3>Customer Name</h3>
+<input id="customerName" placeholder="Enter customer name">
+
+<br><br>
+
+<div id="captureArea">
+  <table id="billTable">
+    <tr>
+      <th>Plant Name</th>
+      <th>Qty</th>
+      <th>Price</th>
+      <th>Height (Ft)</th>
+      <th>Total</th>
+    </tr>
+  </table>
+
+  <h3 id="finalTotal">Grand Total: 0</h3>
+</div>
+
+<button onclick="addRow()">➕ Add Row</button>
+<button onclick="capture(false)">Submit (English)</button>
+<button onclick="capture(true)">Submit (Gujarati)</button>
+
+<script>
+const table = document.getElementById("billTable");
+const customerName = document.getElementById("customerName");
+
+function addRow() {
+  const r = table.insertRow();
+  for (let i = 0; i < 5; i++) {
+    const c = r.insertCell();
+    const inp = document.createElement("input");
+    inp.type = (i === 1 || i === 2 || i === 3) ? "number" : "text";
+    inp.oninput = calc;
+    c.appendChild(inp);
+  }
+}
+
+for (let i = 0; i < 10; i++) addRow();
+
+/* 🔧 NO DECIMALS */
+function calc() {
+  let grand = 0;
+
+  for (let i = 1; i < table.rows.length; i++) {
+    const r = table.rows[i];
+    const q = Number(r.cells[1].firstChild.value) || 0;
+    const p = Number(r.cells[2].firstChild.value) || 0;
+    const t = q * p;
+
+    r.cells[4].firstChild.value = t;   // no decimals
+    grand += t;
+  }
+
+  document.getElementById("finalTotal").innerText =
+    "Grand Total: " + grand;
+}
+
+/* Gujarati phonetic dictionary */
+function toGujarati(text) {
+  const map = {
+    "areca":"અરેકા",
+    "bahumia":"બહુમિયા",
+    "coconut":"કોકોનટ"
+  };
+
+  return text.split(" ").map(w => {
+    const k = w.toLowerCase();
+    return map[k] || w;
+  }).join(" ");
+}
+
+/* FORCE WIDE IMAGE CAPTURE */
+async function capture(guj) {
+  const name = customerName.value.trim();
+  if (!name) {
+    alert("Enter customer name");
+    return;
+  }
+
+  const area = document.getElementById("captureArea");
+  const originalWidth = area.style.width;
+  area.style.width = "900px";
+
+  if (guj) {
+    for (let i = 1; i < table.rows.length; i++) {
+      const input = table.rows[i].cells[0].firstChild;
+      input.dataset.eng = input.value;
+      input.value = toGujarati(input.value);
+    }
+  }
+
+  const canvas = await html2canvas(area, { scale: 2 });
+  const blob = await new Promise(r => canvas.toBlob(r));
+
+  let copied = false;
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob })
+      ]);
+      copied = true;
+      alert("Image copied! Paste in WhatsApp 📲");
+    } catch(e){}
+  }
+
+  if (!copied) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name + (guj ? "_Gujarati" : "") + ".png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    alert("Image downloaded. Share via WhatsApp 📎");
+  }
+
+  area.style.width = originalWidth;
+
+  if (guj) {
+    for (let i = 1; i < table.rows.length; i++) {
+      const input = table.rows[i].cells[0].firstChild;
+      if (input.dataset.eng) input.value = input.dataset.eng;
+    }
+  }
+}
+</script>
+
+</body>
+</html>
