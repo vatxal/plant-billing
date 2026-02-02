@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plant Bill</title>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  background: #f5f5f5;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  font-size: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #444;
+  padding: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #eaeaea;
+}
+
+/* Column widths */
+th:nth-child(1),
+td:nth-child(1) {
+  width: 45%;
+  text-align: left;
+  word-break: break-word;
+}
+
+th:nth-child(2),
+td:nth-child(2) { width: 10%; }
+
+th:nth-child(3),
+td:nth-child(3) { width: 15%; }
+
+th:nth-child(4),
+td:nth-child(4) { width: 15%; }
+
+th:nth-child(5),
+td:nth-child(5) { width: 15%; }
+
+button {
+  padding: 10px;
+  font-size: 16px;
+  margin: 5px 0;
+  width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<h3>Customer Name</h3>
+<input id="customerName" placeholder="Enter customer name">
+
+<br><br>
+
+<div id="captureArea">
+  <table id="billTable">
+    <tr>
+      <th>Plant Name</th>
+      <th>Qty</th>
+      <th>Price</th>
+      <th>Height (Ft)</th>
+      <th>Total</th>
+    </tr>
+  </table>
+
+  <h3 id="finalTotal">Grand Total: 0</h3>
+</div>
+
+<button onclick="addRow()">➕ Add Row</button>
+<button onclick="capture(false)">Submit (English)</button>
+<button onclick="capture(true)">Submit (Gujarati)</button>
+
+<script>
+const table = document.getElementById("billTable");
+const customerName = document.getElementById("customerName");
+
+function addRow() {
+  const r = table.insertRow();
+  for (let i = 0; i < 5; i++) {
+    const c = r.insertCell();
+    const inp = document.createElement("input");
+    inp.type = (i === 1 || i === 2 || i === 3) ? "number" : "text";
+    inp.oninput = calc;
+    c.appendChild(inp);
+  }
+}
+
+for (let i = 0; i < 10; i++) addRow();
+
+function calc() {
+  let grand = 0;
+  for (let i = 1; i < table.rows.length; i++) {
+    const r = table.rows[i];
+    const q = Number(r.cells[1].firstChild.value) || 0;
+    const p = Number(r.cells[2].firstChild.value) || 0;
+    const t = q * p;
+    r.cells[4].firstChild.value = t.toFixed(2);
+    grand += t;
+  }
+  document.getElementById("finalTotal").innerText =
+    "Grand Total: " + grand.toFixed(2);
+}
+
+/* ✅ PHONETIC ENGLISH → GUJARATI (NO DICTIONARY) */
+function toGujarati(text) {
+  const rules = [
+    ["aa","આ"],["ee","ઈ"],["ii","ઈ"],["oo","ઊ"],["uu","ઊ"],
+    ["ai","ઐ"],["au","ઔ"],
+    ["kh","ખ"],["gh","ઘ"],["ch","ચ"],["jh","ઝ"],
+    ["th","થ"],["dh","ધ"],["ph","ફ"],["bh","ભ"],
+    ["sh","શ"],["gn","ગ્ન"],["tr","ત્ર"]
+  ];
+
+  const letters = {
+    a:"અ", b:"બ", c:"ક", d:"દ", e:"એ", f:"ફ", g:"ગ",
+    h:"હ", i:"ઇ", j:"જ", k:"ક", l:"લ", m:"મ", n:"ન",
+    o:"ઓ", p:"પ", q:"ક", r:"ર", s:"સ", t:"ત",
+    u:"ઉ", v:"વ", w:"વ", x:"ક્સ", y:"ય", z:"ઝ"
+  };
+
+  return text.split(" ").map(word => {
+    let w = word.toLowerCase();
+    let out = "";
+
+    while (w.length) {
+      let matched = false;
+
+      for (const [eng, guj] of rules) {
+        if (w.startsWith(eng)) {
+          out += guj;
+          w = w.slice(eng.length);
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        out += letters[w[0]] || w[0];
+        w = w.slice(1);
+      }
+    }
+    return out;
+  }).join(" ");
+}
+
+/* Wide capture for full names */
+async function capture(guj) {
+  const name = customerName.value.trim();
+  if (!name) {
+    alert("Enter customer name");
+    return;
+  }
+
+  const area = document.getElementById("captureArea");
+  const originalWidth = area.style.width;
+  area.style.width = "900px";
+
+  if (guj) {
+    for (let i = 1; i < table.rows.length; i++) {
+      const inp = table.rows[i].cells[0].firstChild;
+      inp.dataset.eng = inp.value;
+      inp.value = toGujarati(inp.value);
+    }
+  }
+
+  const canvas = await html2canvas(area, { scale: 2 });
+  const blob = await new Promise(r => canvas.toBlob(r));
+
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({ "image/png": blob })
+    ]);
+    alert("Image copied! Paste into WhatsApp 📲");
+  } catch {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name + (guj ? "_Gujarati" : "") + ".png";
+    a.click();
+  }
+
+  area.style.width = originalWidth;
+
+  if (guj) {
+    for (let i = 1; i < table.rows.length; i++) {
+      const inp = table.rows[i].cells[0].firstChild;
+      inp.value = inp.dataset.eng;
+    }
+  }
+}
+</script>
+
+</body>
+</html>
