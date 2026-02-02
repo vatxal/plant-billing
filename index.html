@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plant Billing</title>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  background: #f5f5f5;
+}
+
+h2 {
+  text-align: center;
+}
+
+label {
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+#captureArea {
+  background: white;
+  padding: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  font-size: 14px;
+  text-align: center;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+th {
+  background: #eaeaea;
+}
+
+/* Plant name wider */
+th:nth-child(1),
+td:nth-child(1) {
+  width: 35%;
+  text-align: left;
+}
+
+.total-cell {
+  font-weight: bold;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+.add-btn {
+  background: #0277bd;
+}
+
+.eng-btn {
+  background: #2e7d32;
+}
+
+.guj-btn {
+  background: #6a1b9a;
+}
+
+@media (max-width: 600px) {
+  th, td {
+    font-size: 12px;
+    padding: 5px;
+  }
+  th:nth-child(1),
+  td:nth-child(1) {
+    width: 40%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<h2>Plant Billing</h2>
+
+<label>Customer Name</label>
+<input id="customerName" placeholder="Enter customer name">
+
+<br><br>
+
+<div id="captureArea">
+<table id="billTable">
+  <tr>
+    <th>Plant Name</th>
+    <th>Qty</th>
+    <th>Price</th>
+    <th>Height (Ft)</th>
+    <th>Total</th>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td colspan="4"><b>Grand Total</b></td>
+    <td id="grandTotal" class="total-cell">0</td>
+  </tr>
+</table>
+</div>
+
+<button class="add-btn" onclick="addRow()">➕ Add Row</button>
+<button class="eng-btn" onclick="captureTable(false)">Submit (English)</button>
+<button class="guj-btn" onclick="captureTable(true)">Submit (Gujarati)</button>
+
+<script>
+const table = document.getElementById("billTable");
+const grandTotalEl = document.getElementById("grandTotal");
+
+/* ADD ROW */
+function addRow() {
+  const row = table.insertRow();
+  row.innerHTML = `
+    <td><input></td>
+    <td><input type="number" oninput="calculate()"></td>
+    <td><input type="number" oninput="calculate()"></td>
+    <td><input></td>
+    <td class="row-total">0</td>
+  `;
+}
+
+/* INITIAL ROWS */
+for (let i = 0; i < 10; i++) addRow();
+
+/* TOTAL CALCULATION */
+function calculate() {
+  let grandTotal = 0;
+  document.querySelectorAll(".row-total").forEach(cell => {
+    const row = cell.parentElement;
+    const qty = Number(row.cells[1].firstChild.value || 0);
+    const price = Number(row.cells[2].firstChild.value || 0);
+    const total = qty * price;
+    cell.innerText = total;
+    grandTotal += total;
+  });
+  grandTotalEl.innerText = grandTotal;
+}
+
+/* PHONETIC EN → GUJ */
+function toGujarati(text) {
+  const map = [
+    ["aa","આ"],["ai","ઐ"],["au","ઔ"],["ee","ઈ"],["oo","ઊ"],
+    ["a","અ"],["i","ઇ"],["u","ઉ"],["e","એ"],["o","ઓ"],
+    ["ka","ક"],["k","ક"],["kha","ખ"],["kh","ખ"],
+    ["ga","ગ"],["g","ગ"],["gha","ઘ"],
+    ["cha","ચ"],["ch","ચ"],["ja","જ"],["j","જ"],
+    ["ta","ટ"],["tha","ઠ"],["da","ડ"],["dha","ઢ"],
+    ["na","ન"],["pa","પ"],["pha","ફ"],["fa","ફ"],
+    ["ba","બ"],["bha","ભ"],["ma","મ"],
+    ["ya","ય"],["ra","ર"],["la","લ"],["va","વ"],
+    ["sha","શ"],["sa","સ"],["ha","હ"],
+    ["n","ન"],["m","મ"],["l","લ"],["r","ર"],["y","ય"],["v","વ"]
+  ];
+
+  let out = text.toLowerCase();
+  map.forEach(([en, gu]) => {
+    out = out.replaceAll(en, gu);
+  });
+  return out;
+}
+
+/* CAPTURE FUNCTION */
+function captureTable(gujarati) {
+  const name = document.getElementById("customerName").value.trim();
+  if (!name) {
+    alert("Please enter customer name");
+    return;
+  }
+
+  if (gujarati) {
+    document.querySelectorAll("#billTable tr").forEach((row, i) => {
+      if (i === 0) return;
+      const cell = row.cells[0].firstChild;
+      cell.dataset.eng = cell.value;
+      cell.value = toGujarati(cell.value);
+    });
+  }
+
+  html2canvas(document.getElementById("captureArea"), { scale: 2 })
+    .then(canvas => {
+      canvas.toBlob(blob => {
+
+        if (navigator.clipboard && window.ClipboardItem) {
+          try {
+            const item = new ClipboardItem({ "image/png": blob });
+            navigator.clipboard.write([item]).then(() => {
+              alert("Image copied! Paste into WhatsApp 📲");
+            });
+            restoreEnglish();
+            return;
+          } catch(e){}
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name + (gujarati ? "_Gujarati" : "") + ".png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        alert("Image downloaded. Share via WhatsApp 📎");
+        restoreEnglish();
+      });
+    });
+}
+
+/* RESTORE ENGLISH AFTER SNAP */
+function restoreEnglish() {
+  document.querySelectorAll("#billTable tr").forEach((row, i) => {
+    if (i === 0) return;
+    const cell = row.cells[0].firstChild;
+    if (cell.dataset.eng) {
+      cell.value = cell.dataset.eng;
+    }
+  });
+}
+</script>
+
+</body>
+</html>
