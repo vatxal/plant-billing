@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plant Billing</title>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  background: #f5f5f5;
+}
+
+h2 { text-align: center; }
+
+label { font-weight: bold; }
+
+input {
+  width: 100%;
+  padding: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+#captureArea {
+  background: white;
+  padding: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  font-size: 14px;
+  text-align: center;
+  word-wrap: break-word;
+}
+
+th { background: #eaeaea; }
+
+th:nth-child(1),
+td:nth-child(1) {
+  width: 40%;
+  text-align: left;
+}
+
+.total-cell { font-weight: bold; }
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+}
+
+.add-btn { background: #0277bd; }
+.eng-btn { background: #2e7d32; }
+.guj-btn { background: #6a1b9a; }
+
+@media (max-width:600px){
+  th, td { font-size: 12px; }
+}
+</style>
+</head>
+
+<body>
+
+<h2>Plant Billing</h2>
+
+<label>Customer Name</label>
+<input id="customerName" placeholder="Enter customer name">
+
+<br><br>
+
+<div id="captureArea">
+<table id="billTable">
+  <tr>
+    <th>Plant Name</th>
+    <th>Qty</th>
+    <th>Price</th>
+    <th>Height</th>
+    <th>Total</th>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td colspan="4"><b>Grand Total</b></td>
+    <td id="grandTotal" class="total-cell">0</td>
+  </tr>
+</table>
+</div>
+
+<button class="add-btn" onclick="addRow()">➕ Add Row</button>
+<button class="eng-btn" onclick="capture(false)">Submit (English)</button>
+<button class="guj-btn" onclick="capture(true)">Submit (Gujarati)</button>
+
+<script>
+const table = document.getElementById("billTable");
+const grandTotalEl = document.getElementById("grandTotal");
+
+/* INIT ROWS */
+for (let i = 0; i < 10; i++) addRow();
+
+function addRow() {
+  const r = table.insertRow();
+  r.innerHTML = `
+    <td><input></td>
+    <td><input type="number" oninput="calc()"></td>
+    <td><input type="number" oninput="calc()"></td>
+    <td><input></td>
+    <td class="row-total">0</td>
+  `;
+}
+
+function calc() {
+  let g = 0;
+  document.querySelectorAll(".row-total").forEach(c => {
+    const r = c.parentElement;
+    const q = Number(r.cells[1].firstChild.value || 0);
+    const p = Number(r.cells[2].firstChild.value || 0);
+    const t = q * p;
+    c.innerText = t;
+    g += t;
+  });
+  grandTotalEl.innerText = g;
+}
+
+/* PHONETIC EN → GUJ */
+function toGujarati(text) {
+  const map = [
+    ["coconut","કોકોનટ"],
+    ["areca","અરેકા"],
+    ["bahumia","બહુમિયા"]
+  ];
+
+  let out = text.toLowerCase();
+  map.forEach(([e,g]) => out = out.replaceAll(e,g));
+  return out || text;
+}
+
+/* MAIN CAPTURE */
+async function capture(guj) {
+  const name = customerName.value.trim();
+  if (!name) {
+    alert("Enter customer name");
+    return;
+  }
+
+  // Gujarati transform
+  if (guj) {
+    document.querySelectorAll("#billTable tr").forEach((r,i)=>{
+      if(i===0) return;
+      const iEl = r.cells[0].firstChild;
+      iEl.dataset.eng = iEl.value;
+      iEl.value = toGujarati(iEl.value);
+    });
+  }
+
+  const canvas = await html2canvas(captureArea,{scale:2});
+  const blob = await new Promise(res=>canvas.toBlob(res));
+
+  let copied = false;
+
+  // TRY CLIPBOARD (DESKTOP)
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob })
+      ]);
+      copied = true;
+      alert("Image copied! Paste into WhatsApp 📲");
+    } catch(e){}
+  }
+
+  // FALLBACK: DOWNLOAD (MOBILE)
+  if (!copied) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name + (guj ? "_Gujarati" : "") + ".png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    alert("Image downloaded. Share via WhatsApp 📎");
+  }
+
+  // Restore English
+  document.querySelectorAll("#billTable tr").forEach((r,i)=>{
+    if(i===0) return;
+    const iEl = r.cells[0].firstChild;
+    if(iEl.dataset.eng) iEl.value = iEl.dataset.eng;
+  });
+}
+</script>
+
+</body>
+</html>
