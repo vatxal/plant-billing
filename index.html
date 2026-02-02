@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plant Billing</title>
+
+<!-- html2canvas -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+h2 {
+  text-align: center;
+}
+
+input {
+  width: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+
+th {
+  background: #e8e8e8;
+}
+
+.total-cell {
+  font-weight: bold;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  background: #2e7d32;
+  color: white;
+}
+
+.add-btn {
+  background: #0277bd;
+}
+
+#captureArea {
+  padding: 10px;
+  background: white;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Plant Billing</h2>
+
+<label><b>Customer Name</b></label>
+<input id="customerName" placeholder="Enter customer name">
+
+<br><br>
+
+<div id="captureArea">
+<table id="billTable">
+  <tr>
+    <th>Plant Name</th>
+    <th>Qty</th>
+    <th>Price</th>
+    <th>Height (Ft)</th>
+    <th>Total</th>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td colspan="4"><b>Grand Total</b></td>
+    <td id="grandTotal" class="total-cell">0</td>
+  </tr>
+</table>
+</div>
+
+<button class="add-btn" onclick="addRow()">➕ Add Row</button>
+<button onclick="captureTable()">Submit & Copy Image</button>
+
+<script>
+const table = document.getElementById("billTable");
+const grandTotalEl = document.getElementById("grandTotal");
+
+function addRow() {
+  const row = table.insertRow();
+  row.innerHTML = `
+    <td><input></td>
+    <td><input type="number" oninput="calculate()"></td>
+    <td><input type="number" oninput="calculate()"></td>
+    <td><input></td>
+    <td class="row-total">0</td>
+  `;
+}
+
+for (let i = 0; i < 10; i++) addRow();
+
+function calculate() {
+  let grandTotal = 0;
+  const rows = document.querySelectorAll(".row-total");
+
+  rows.forEach(cell => {
+    const row = cell.parentElement;
+    const qty = Number(row.cells[1].firstChild.value || 0);
+    const price = Number(row.cells[2].firstChild.value || 0);
+    const total = qty * price;
+    cell.innerText = total;
+    grandTotal += total;
+  });
+
+  grandTotalEl.innerText = grandTotal;
+}
+
+function captureTable() {
+  const name = document.getElementById("customerName").value.trim();
+  if (!name) {
+    alert("Please enter customer name");
+    return;
+  }
+
+  html2canvas(document.getElementById("captureArea"), {
+    scale: 2
+  }).then(canvas => {
+    canvas.toBlob(blob => {
+      const item = new ClipboardItem({ "image/png": blob });
+      navigator.clipboard.write([item]).then(() => {
+        alert("Image copied! Paste it directly into WhatsApp 📲");
+      });
+    });
+  });
+}
+</script>
+
+</body>
+</html>
